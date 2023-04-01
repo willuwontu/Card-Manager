@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -8,18 +9,21 @@ namespace R3DCore
 {
     public static class CardManager
     {
-        private static Dictionary<string, CardInfo> _hiddenCards = new Dictionary<string, CardInfo>();
-        private static Dictionary<string, CardInfo> _cards = new Dictionary<string, CardInfo>();
+        //private static List<CardInfo> _hiddenCards = new List<CardInfo>();
+        private static List<CardInfo> _cards = new List<CardInfo>();
 
-        public static ReadOnlyDictionary<string, CardInfo> Cards => new ReadOnlyDictionary<string, CardInfo>(_cards);
-        public static ReadOnlyDictionary<string, CardInfo> HiddenCards => new ReadOnlyDictionary<string, CardInfo>(_hiddenCards);
+        //public static ReadOnlyCollection<CardInfo> AllCards => new ReadOnlyCollection<CardInfo>(_cards.Concat(_hiddenCards).ToList());
+        public static ReadOnlyCollection<CardInfo> Cards => new ReadOnlyCollection<CardInfo>(_cards);
+        //public static ReadOnlyCollection<CardInfo> HiddenCards => new ReadOnlyCollection<CardInfo>(_hiddenCards);
 
         public static void RegisterCard(string cardName, CardUpgrade card, string modName, bool hidden = false)
         {
-            if (hidden)
+            if (Cards.Select(ci => ci.card).Contains(card))
             {
-                _hiddenCards.Add((modName + "_" + cardName).Sanitize(), new CardInfo(card, cardName, modName, hidden));
+                throw new ArgumentException("Cards may only be registered once.");
             }
+
+            _cards.Add(new CardInfo(card, cardName, modName, hidden));
         }
 
         public class CardInfo
@@ -28,6 +32,7 @@ namespace R3DCore
             public string cardName;
             public string modName;
             public bool hidden;
+            public bool enabled = true;
 
             public CardInfo(CardUpgrade card, string cardName, string modName, bool hidden)
             {
