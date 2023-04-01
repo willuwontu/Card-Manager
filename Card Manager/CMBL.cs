@@ -1,5 +1,8 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using HarmonyLib;
+using System.IO;
+using UnityEngine;
 
 namespace R3DCore
 {
@@ -13,12 +16,50 @@ namespace R3DCore
 
         public static CMBL instance { get; private set; }
 
+        public static CardUpgrade GodMode = null;
+
         void Awake()
         {
             instance = this;
 
             var harmony = new Harmony(ModId);
             harmony.PatchAll();
+
+        }
+
+        void Start()
+        {
+            var godgo = new GameObject("GodMode", typeof(CardUpgrade), typeof(Card_Stats));
+            GodMode = godgo.GetComponent<CardUpgrade>();
+
+            DontDestroyOnLoad(godgo);
+
+            var stats = GodMode.GetComponent<Card_Stats>();
+            stats.stats = new PlayerStats();
+            stats.stats.Health = new PlayerStatsEntry();
+            stats.stats.LifeSteal = new PlayerStatsEntry();
+            stats.stats.Speed = new PlayerStatsEntry();
+            stats.stats.AbilityCooldown = new PlayerStatsEntry();
+            stats.stats.FireRate = new PlayerStatsEntry();
+            stats.stats.Spread = new PlayerStatsEntry();
+            stats.stats.ReloadSpeed = new PlayerStatsEntry();
+            stats.stats.Ammo = new PlayerStatsEntry();
+            stats.stats.NrOfProjectiles = new PlayerStatsEntry();
+            stats.stats.Damage = new PlayerStatsEntry();
+            stats.stats.ProjectileSpeed = new PlayerStatsEntry();
+            stats.stats.ProjectileBounces = new PlayerStatsEntry();
+            stats.stats.Health.multiplier = 100;
+            stats.stats.LifeSteal.baseValue = 1;
+            stats.stats.LifeSteal.multiplier = 100;
+            stats.stats.FireRate.multiplier = 0.1f;
+            stats.stats.ReloadSpeed.multiplier = 0.1f;
+            stats.stats.Ammo.baseValue = 100;
+            stats.stats.NrOfProjectiles.baseValue = 10;
+            stats.stats.Damage.multiplier = 10;
+            stats.stats.ProjectileSpeed.multiplier = 1f;
+            stats.stats.Spread.multiplier = 5f;
+
+            CardManager.RegisterCard("God", GodMode, "Card Manager", 1, true, true);
         }
     }
 }

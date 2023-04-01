@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace R3DCore.Patches
+namespace R3DCore.CM.Patches
 {
     [HarmonyPatch(typeof(CardHandler))]
     class CardHandler_Patch
@@ -14,7 +14,7 @@ namespace R3DCore.Patches
         [HarmonyPatch("GetRandomCard")]
         static bool GetRandomCard(ref CardUpgrade __result)
         {
-            __result = CardHandler.instance.cards[UnityEngine.Random.Range(0, CardHandler.instance.cards.Count)];
+            __result = CardManager.GetRandomCard();
 
             return false;
         }
@@ -27,7 +27,7 @@ namespace R3DCore.Patches
             {
                 if (!CardManager.Cards.Select(ci => ci.card).Contains(card))
                 {
-                    CardManager.RegisterCard(GetVanillaCardName(card), card, "Vanilla", false);
+                    CardManager.RegisterCard(GetVanillaCardName(card), card, "Vanilla", CardHandler.instance.cards.Where(c => c == card).Count(), false);
                 }
             }
 
@@ -58,7 +58,7 @@ namespace R3DCore.Patches
             }
             else
             {
-                output.Replace("C_", string.Empty);
+                output = output.Replace("C_", string.Empty);
             }
 
             return output;
