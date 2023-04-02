@@ -52,11 +52,10 @@ namespace R3DCore
             stats.stats.LifeSteal.baseValue = 1;
             stats.stats.LifeSteal.multiplier = 100;
             stats.stats.FireRate.multiplier = 0.1f;
-            stats.stats.ReloadSpeed.multiplier = 0.1f;
             stats.stats.Ammo.baseValue = 100;
-            stats.stats.NrOfProjectiles.baseValue = 10;
-            stats.stats.Damage.multiplier = 10;
+            stats.stats.Damage.multiplier = 100;
             stats.stats.ProjectileSpeed.multiplier = 1f;
+            stats.stats.Spread.baseValue = 5f;
             stats.stats.Spread.multiplier = 5f;
 
             CardManager.RegisterCard("God", GodMode, "Card Manager", 1, true, true);

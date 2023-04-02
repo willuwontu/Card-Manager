@@ -23,15 +23,17 @@ namespace R3DCore.CM.Patches
         [HarmonyPatch("Awake")]
         static void Awake(CardHandler __instance)
         {
-            foreach (var card in __instance.cards)
+            var cards = __instance.cards.ToArray();
+
+            foreach (var card in cards)
             {
                 if (!CardManager.Cards.Select(ci => ci.card).Contains(card))
                 {
-                    CardManager.RegisterCard(GetVanillaCardName(card), card, "Vanilla", CardHandler.instance.cards.Where(c => c == card).Count(), false);
+                    CardManager.RegisterCard(GetVanillaCardName(card), card, "Vanilla", cards.Where(c => c == card).Count(), false);
                 }
             }
 
-            CardHandler.instance.cards = CardManager.Cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.cardName).Select(ci => ci.card).ToList();
+            CardHandler.instance.cards = CardManager.Cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.modName).ThenBy(ci => ci.rarity).Select(ci => ci.card).ToList();
         }
 
         // Need to switch this to a transpiler later on.
