@@ -7,6 +7,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using R3DCore.CM.Extensions;
+using UnityEngine;
+using Photon.Realtime;
 
 namespace R3DCore
 {
@@ -16,17 +18,40 @@ namespace R3DCore
         private static List<CardInfo> _cards = new List<CardInfo>();
         public static ReadOnlyCollection<CardInfo> Cards => new ReadOnlyCollection<CardInfo>(_cards);
 
-        public static void RegisterCard(string cardName, CardUpgrade card, string modName, int weight, bool hidden = false, bool allowMultiple = true)
+        public static CardInfo RegisterCard(string cardName, CardUpgrade card, string modName, int weight, bool canBeReassigned = true, bool hidden = false, bool allowMultiple = true)
         {
             if (Cards.Select(ci => ci.card).Contains(card))
             {
                 throw new ArgumentException("Cards may only be registered once.");
             }
 
-            _cards.Add(new CardInfo(card, cardName, modName, weight, hidden, allowMultiple));
-            _cards = _cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.cardName).ThenBy(ci => ci.rarity).ToList();
-            CardHandler.instance.cards = CardManager.Cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.cardName).ThenBy(ci => ci.rarity).Select(ci => ci.card).ToList();
+            CardInfo cardInfo = new CardInfo(card, cardName, modName, weight, canBeReassigned, hidden, allowMultiple);
+
+            _cards.Add(cardInfo);
+            _cards = _cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.cardName).ThenBy(ci => ci.weight).ToList();
+            CardHandler.instance.cards = CardManager.Cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.cardName).ThenBy(ci => ci.weight).Select(ci => ci.card).ToList();
+
+            return cardInfo;
         }
+
+        public static CardInfo GetCardInfoFromCard(CardUpgrade card)
+        {
+            if (card == null)
+            {
+                return null;
+            }
+
+            CardInfo output = null;
+
+            if (Cards.Select(c => c.card).Contains(card))
+            {
+                output = Cards.Where(c => c.card == card).FirstOrDefault();
+            }
+
+            return output;
+        }
+
+        #region GetRandomCard
 
         public static CardUpgrade GetRandomCard(CardUpgrade[] cards)
         {
@@ -34,9 +59,9 @@ namespace R3DCore
 
             if (cards.Length > 0)
             {
-                CardInfo[] cardInfos = cards.Select(c => { var ci = GetCardInfoFromCard(c); UnityEngine.Debug.Log(ci.cardName + ": " + ci.rarity) ; return ci; }).ToArray();
+                CardInfo[] cardInfos = cards.Select(c => { var ci = GetCardInfoFromCard(c); UnityEngine.Debug.Log(ci.cardName + ": " + ci.weight) ; return ci; }).ToArray();
 
-                int sum = cardInfos.Sum(c => c.rarity);
+                int sum = cardInfos.Sum(c => c.weight);
 
                 var rand = UnityEngine.Random.Range(0, sum+1);
 
@@ -44,7 +69,7 @@ namespace R3DCore
 
                 for (int i = 0; i < cardInfos.Length; i++)
                 {
-                    rand -= cardInfos[i].rarity;
+                    rand -= cardInfos[i].weight;
                     if (rand <= 0)
                     {
                         card = cardInfos[i].card;
@@ -116,6 +141,10 @@ namespace R3DCore
             return GetRandomCard(availableCards);
         }
 
+        #endregion GetRandomCard
+
+        #region CardValidation
+
         public static bool PlayerIsAllowedCard(Player player, CardUpgrade card)
         {
             bool output = true;
@@ -169,23 +198,6 @@ namespace R3DCore
             return output;
         }
 
-        public static CardInfo GetCardInfoFromCard(CardUpgrade card)
-        {
-            if (card == null)
-            {
-                return null;
-            }
-
-            CardInfo output = null;
-
-            if (Cards.Select(c => c.card).Contains(card))
-            {
-                output = Cards.Where(c => c.card == card).FirstOrDefault();
-            }
-
-            return output;
-        }
-
         private static Dictionary<string, List<Func<Player, CardUpgrade, bool>>> cardValidationFunctions = new Dictionary<string, List<Func<Player, CardUpgrade, bool>>>();
 
         public static void AddCardValidationFunctions(string modname, Func<Player, CardUpgrade, bool> validationFunction)
@@ -197,12 +209,98 @@ namespace R3DCore
             cardValidationFunctions[modname].Add(validationFunction);
         }
 
+        #endregion CardValidation
+
+        #region CardManipulation
+
         public static void AddCardToPlayer(Player player, CardUpgrade card)
         {
             player.refs.view.RPC("RPCA_ADDCARDWITHID", RpcTarget.All, new object[]
             {
                 CardHandler.instance.GetIDOfCard(card)
             });
+        }
+
+        public static void RemoveAllCardsFromPlayer(Player player)
+        {
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_RemoveCards), RpcTarget.All, new object[] { });
+        }
+
+        public static void RemoveCardFromPlayer(Player player, CardUpgrade card, SelectionType selectionType = SelectionType.Newest)
+        {
+            CardUpgrade[] oldCards = player.cards.ToArray();
+            List<CardUpgrade> newCards = new List<CardUpgrade>();
+
+            int[] indeces = Enumerable.Range(0, oldCards.Length).Where(idx => oldCards[idx] == card).ToArray();
+            List<int> removedIndeces = new List<int>();
+
+            if (indeces.Length > 0)
+            {
+                switch (selectionType) 
+                { 
+                    case SelectionType.Newest:
+                        removedIndeces.Add(indeces[indeces.Length - 1]); 
+                        break;
+                    case SelectionType.All:
+                        removedIndeces.AddRange(indeces); 
+                        break;
+                    case SelectionType.Oldest:
+                        removedIndeces.Add(indeces[0]);
+                        break;
+                    case SelectionType.Random:
+                        removedIndeces.Add(indeces[UnityEngine.Random.Range(0, indeces.Length)]);
+                        break;
+                }
+            }
+
+            for (int i = 0; i < oldCards.Length; i++)
+            {
+                if (!removedIndeces.Contains(i))
+                {
+                    newCards.Add(oldCards[i]);
+                }
+            }
+
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { newCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
+        }
+
+        public static void RemoveCardFromPlayer(Player player, int index)
+        {
+            List<CardUpgrade> oldCards = player.cards.ToList();
+            if (index < oldCards.Count)
+            {
+                oldCards.RemoveAt(index);
+            }
+
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { oldCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
+        }
+
+        #endregion CardManipulation
+
+        public static void OnCardRemovedFromPlayer(Player player, CardUpgrade card)
+        {
+            IOnRemoveFromPlayer[] components = card.GetComponents<IOnRemoveFromPlayer>();
+            for (int i = 0; i < components.Length; i++)
+            {
+                components[i].OnRemoveFromPlayer(player);
+            }
+        }
+
+        public static void OnReapplyCardToPlayer(Player player, CardUpgrade card)
+        {
+            IOnReapplyToPlayer[] components = card.GetComponents<IOnReapplyToPlayer>();
+            for (int i = 0; i < components.Length;i++)
+            {
+                components[i].OnReapplyToPlayer(player);
+            }
+        }
+
+        public enum SelectionType
+        {
+            All,
+            Oldest,
+            Newest,
+            Random
         }
 
         public class CardInfo
@@ -213,16 +311,18 @@ namespace R3DCore
             public bool allowMultiple = true;
             public bool hidden;
             public bool enabled = true;
-            public int rarity;
+            public int weight;
+            public bool canBeReassigned;
 
-            public CardInfo(CardUpgrade card, string cardName, string modName, int rarity, bool hidden, bool allowMultiple)
+            public CardInfo(CardUpgrade card, string cardName, string modName, int weight, bool canBeReassigned, bool hidden, bool allowMultiple)
             {
                 this.card = card;
                 this.cardName = cardName;
                 this.modName = modName;
-                this.rarity = rarity;
+                this.weight = weight;
                 this.hidden = hidden;
                 this.allowMultiple = allowMultiple;
+                this.canBeReassigned = canBeReassigned;
             }
         }
     }

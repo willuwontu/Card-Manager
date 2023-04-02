@@ -12,5 +12,11 @@ namespace R3DCore.CM.Extensions
                 BindingFlags.Instance | BindingFlags.InvokeMethod |
                 BindingFlags.NonPublic, null, cardHandler, new object[] { cardToGet });
         }
+        public static CardUpgrade GetCardWithID(this CardHandler cardHandler, int cardID)
+        {
+            return (CardUpgrade)typeof(CardHandler).InvokeMember("GetCardWithID",
+                BindingFlags.Instance | BindingFlags.InvokeMethod |
+                BindingFlags.NonPublic, null, cardHandler, new object[] { cardID });
+        }
     }
 }

@@ -33,7 +33,7 @@ namespace R3DCore.CM.Patches
                 }
             }
 
-            CardHandler.instance.cards = CardManager.Cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.modName).ThenBy(ci => ci.rarity).Select(ci => ci.card).ToList();
+            CardHandler.instance.cards = CardManager.Cards.OrderBy(ci => ci.modName).ThenBy(ci => ci.modName).ThenBy(ci => ci.weight).Select(ci => ci.card).ToList();
         }
 
         // Need to switch this to a transpiler later on.

@@ -21,5 +21,12 @@ namespace R3DCore.CM.Patches
 
             return true;
         }
+
+        [HarmonyPostfix()]
+        [HarmonyPatch("AddCard")]
+        static void ReAddCard()
+        {
+
+        }
     }
 }
