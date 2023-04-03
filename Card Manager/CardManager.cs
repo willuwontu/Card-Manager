@@ -17,6 +17,7 @@ namespace R3DCore
         public static readonly ConfigFile config = new ConfigFile(Path.Combine(Paths.ConfigPath, "CardManager.cfg"), true);
         private static List<CardInfo> _cards = new List<CardInfo>();
         public static ReadOnlyCollection<CardInfo> Cards => new ReadOnlyCollection<CardInfo>(_cards);
+        public static ReadOnlyCollection<CardUpgrade> CardUpgrades => new ReadOnlyCollection<CardUpgrade>(Cards.Select(c => c.card).ToList());
 
         public static CardInfo RegisterCard(string cardName, CardUpgrade card, string modName, int weight, bool canBeReassigned = true, bool hidden = false, bool allowMultiple = true)
         {
@@ -64,8 +65,6 @@ namespace R3DCore
                 int sum = cardInfos.Sum(c => c.weight);
 
                 var rand = UnityEngine.Random.Range(0, sum+1);
-
-                UnityEngine.Debug.Log($"{rand}/{sum}");
 
                 for (int i = 0; i < cardInfos.Length; i++)
                 {
@@ -164,6 +163,19 @@ namespace R3DCore
                 return false;
             }
 
+            bool cardsConflict = false;
+
+            for (int i = 0; i < player.cards.Count; i++)
+            {
+                cardsConflict = CardsConflict(player.cards[i], card);
+                if (cardsConflict)
+                {
+                    break;
+                }
+            }
+
+            output = output && !cardsConflict;
+
             bool flag = true;
 
             for (int i = cardValidationFunctions.Keys.Count() - 1; i >= 0; i--)
@@ -198,6 +210,20 @@ namespace R3DCore
             return output;
         }
 
+        public static bool CardsConflict(CardUpgrade card, CardUpgrade otherCard)
+        {
+            CardInfo ci1 = CardManager.GetCardInfoFromCard(card);
+
+            CardInfo ci2 = CardManager.GetCardInfoFromCard(otherCard);
+
+            if (ci1.blacklistedCategories.Intersect(ci2.categories).Count() > 0 || ci2.blacklistedCategories.Intersect(ci1.categories).Count() > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private static Dictionary<string, List<Func<Player, CardUpgrade, bool>>> cardValidationFunctions = new Dictionary<string, List<Func<Player, CardUpgrade, bool>>>();
 
         public static void AddCardValidationFunctions(string modname, Func<Player, CardUpgrade, bool> validationFunction)
@@ -221,18 +247,78 @@ namespace R3DCore
             });
         }
 
+        public static void AddCardsToPlayer(Player player, CardUpgrade[] cards)
+        {
+            foreach (var card in cards)
+            {
+                AddCardToPlayer(player, card);
+            }
+        }
+
+        public static void SetPlayerCards(Player player, CardUpgrade[] cards)
+        {
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_SetCards), RpcTarget.All, new object[] { cards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
+        }
+
         public static void RemoveAllCardsFromPlayer(Player player)
         {
             player.refs.view.RPC(nameof(PL_CardHandler.RPCA_RemoveCards), RpcTarget.All, new object[] { });
         }
 
-        public static void RemoveCardFromPlayer(Player player, CardUpgrade card, SelectionType selectionType = SelectionType.Newest)
+        #region RemoveByIndex
+        public static void RemoveCardFromPlayer(Player player, int index)
         {
+            if (index >= player.cards.Count() || index < 0)
+            {
+                return;
+            }
+
+            List<CardUpgrade> oldCards = player.cards.ToList();
+            oldCards.RemoveAt(index);
+
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { oldCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
+        }
+
+        public static void RemoveCardsFromPlayer(Player player, int[] indices)
+        {
+            if (indices == null)
+            {
+                throw new NullReferenceException("Parameter int[] indices cannot be null.");
+            }
+
+            if (indices.Length == 0)
+            {
+                return;
+            }
+
             CardUpgrade[] oldCards = player.cards.ToArray();
             List<CardUpgrade> newCards = new List<CardUpgrade>();
 
-            int[] indeces = Enumerable.Range(0, oldCards.Length).Where(idx => oldCards[idx] == card).ToArray();
+            for (int i = 0; i < oldCards.Length; i++)
+            {
+                if (!indices.Contains(i))
+                {
+                    newCards.Add(oldCards[i]);
+                }
+            }
+
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { newCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
+        }
+        #endregion RemoveByIndex
+
+        #region RemoveByCard
+        public static void RemoveCardFromPlayer(Player player, CardUpgrade card, SelectionType selectionType = SelectionType.Newest)
+        {
+            if (card == null || !player.cards.Contains(card))
+            {
+                return;
+            }
+
+            CardUpgrade[] oldCards = player.cards.ToArray();
+            List<CardUpgrade> newCards = new List<CardUpgrade>();
             List<int> removedIndeces = new List<int>();
+
+            int[] indeces = Enumerable.Range(0, oldCards.Length).Where(idx => oldCards[idx] == card).ToArray();
 
             if (indeces.Length > 0)
             {
@@ -264,16 +350,123 @@ namespace R3DCore
             player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { newCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
         }
 
-        public static void RemoveCardFromPlayer(Player player, int index)
+        public static void RemoveCardsFromPlayer(Player player, CardUpgrade[] cards, SelectionType selectionType = SelectionType.Newest)
         {
-            List<CardUpgrade> oldCards = player.cards.ToList();
-            if (index < oldCards.Count)
+            if (cards == null)
             {
-                oldCards.RemoveAt(index);
+                throw new NullReferenceException("Parameter CardUpgrade[] cards cannot be null.");
             }
 
-            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { oldCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
+            if (cards.Length < 1 || player.cards.Intersect(cards).Count() < 1)
+            {
+                return;
+            }
+
+            CardUpgrade[] oldCards = player.cards.ToArray();
+            List<CardUpgrade> newCards = new List<CardUpgrade>();
+            List<int> removedIndeces = new List<int>();
+
+            for (int i = 0; i < cards.Length; i++)
+            {
+                CardUpgrade card = cards[i];
+
+                int[] indeces = Enumerable.Range(0, oldCards.Length).Where(idx => oldCards[idx] == card).ToArray();
+
+                if (indeces.Length > 0)
+                {
+                    switch (selectionType)
+                    {
+                        case SelectionType.Newest:
+                            removedIndeces.Add(indeces[indeces.Length - 1]);
+                            break;
+                        case SelectionType.All:
+                            removedIndeces.AddRange(indeces);
+                            break;
+                        case SelectionType.Oldest:
+                            removedIndeces.Add(indeces[0]);
+                            break;
+                        case SelectionType.Random:
+                            removedIndeces.Add(indeces[UnityEngine.Random.Range(0, indeces.Length)]);
+                            break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < oldCards.Length; i++)
+            {
+                if (!removedIndeces.Contains(i))
+                {
+                    newCards.Add(oldCards[i]);
+                }
+            }
+
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { newCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
         }
+
+        public static void RemoveCardsFromPlayer(Player player, CardUpgrade[] cards, SelectionType[] selectionType)
+        {
+            if (selectionType == null)
+            {
+                throw new NullReferenceException("Parameter SelectionType[] selectionType cannot be null.");
+            }
+
+            if (cards == null)
+            {
+                throw new NullReferenceException("Parameter CardUpgrade[] cards cannot be null.");
+            }
+
+            if (selectionType.Length != cards.Length)
+            {
+                throw new ArgumentException("Parameters CardUpgrade[] cards and SelectionType[] selectionType must be arrays of the same size.");
+            }
+
+            if (cards.Length < 1 || player.cards.Intersect(cards).Count() < 1)
+            {
+                return;
+            }
+
+            CardUpgrade[] oldCards = player.cards.ToArray();
+            List<CardUpgrade> newCards = new List<CardUpgrade>();
+            List<int> removedIndeces = new List<int>();
+
+            for (int i = 0; i < cards.Length; i++)
+            {
+                CardUpgrade card = cards[i];
+
+                int[] indeces = Enumerable.Range(0, oldCards.Length).Where(idx => oldCards[idx] == card).ToArray();
+
+                if (indeces.Length > 0)
+                {
+                    switch (selectionType[i])
+                    {
+                        case SelectionType.Newest:
+                            removedIndeces.Add(indeces[indeces.Length - 1]);
+                            break;
+                        case SelectionType.All:
+                            removedIndeces.AddRange(indeces);
+                            break;
+                        case SelectionType.Oldest:
+                            removedIndeces.Add(indeces[0]);
+                            break;
+                        case SelectionType.Random:
+                            removedIndeces.Add(indeces[UnityEngine.Random.Range(0, indeces.Length)]);
+                            break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < oldCards.Length; i++)
+            {
+                if (!removedIndeces.Contains(i))
+                {
+                    newCards.Add(oldCards[i]);
+                }
+            }
+
+            player.refs.view.RPC(nameof(PL_CardHandler.RPCA_UpdateCards), RpcTarget.All, new object[] { newCards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() });
+        }
+
+        #endregion RemoveByCard
 
         #endregion CardManipulation
 
@@ -305,14 +498,16 @@ namespace R3DCore
 
         public class CardInfo
         {
-            public CardUpgrade card;
-            public string cardName;
-            public string modName;
-            public bool allowMultiple = true;
-            public bool hidden;
+            public readonly CardUpgrade card;
+            public readonly string cardName;
+            public readonly string modName;
+            public readonly bool allowMultiple = true;
+            public readonly bool hidden;
             public bool enabled = true;
             public int weight;
             public bool canBeReassigned;
+            public CardCategory[] categories = new CardCategory[0];
+            public CardCategory[] blacklistedCategories = new CardCategory[0];
 
             public CardInfo(CardUpgrade card, string cardName, string modName, int weight, bool canBeReassigned, bool hidden, bool allowMultiple)
             {
@@ -323,6 +518,45 @@ namespace R3DCore
                 this.hidden = hidden;
                 this.allowMultiple = allowMultiple;
                 this.canBeReassigned = canBeReassigned;
+            }
+        }
+
+        public struct CardCategory
+        {
+            public readonly string name;
+
+            public CardCategory(string name)
+            {
+                this.name = name;
+            }
+
+            private bool Equals(CardCategory cardCategory)
+            {
+                return cardCategory.name == this.name;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj == null)
+                {
+                    return false;
+                }
+                if (obj is CardCategory cardCategory) 
+                {
+                    return this.Equals(cardCategory);
+                }
+
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return name.GetHashCode();
+            }
+
+            public override string ToString()
+            {
+                return $"CardCategory: {this.name}";
             }
         }
     }

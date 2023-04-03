@@ -1,7 +1,5 @@
 ﻿using HarmonyLib;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
+using System;
 
 namespace R3DCore.CM.Patches
 {
@@ -22,11 +20,28 @@ namespace R3DCore.CM.Patches
             return true;
         }
 
-        [HarmonyPostfix()]
-        [HarmonyPatch("AddCard")]
-        static void ReAddCard()
+        [HarmonyPrefix]
+        [HarmonyPatch("RemoveCards")]
+        static void RemoveCards(Player __instance)
         {
+            foreach (CardUpgrade card in __instance.cards)
+            {
+                try
+                {
+                    CardManager.OnCardRemovedFromPlayer(__instance, card);
+                }
+                catch (Exception e)
+                {
+                    UnityEngine.Debug.LogException(e);
+                }
+            }
+        }
 
+        [HarmonyPostfix]
+        [HarmonyPatch("Awake")]
+        static void Awake(Player __instance)
+        {
+            var cardHandler = __instance.gameObject.GetOrAddComponent<PL_CardHandler>();
         }
     }
 }

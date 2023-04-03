@@ -29,14 +29,20 @@ namespace R3DCore
         }
 
         [PunRPC]
+        public void RPCA_SetCards(int[] cardIDs)
+        {
+            RPCA_RemoveCards();
+
+            foreach (int cardID in cardIDs)
+            {
+                pl_damagable.RPCA_ADDCARDWITHID(cardID);
+            }
+        }
+
+        [PunRPC]
         public void RPCA_UpdateCards(int[] cardIDs)
         {
-            foreach (CardUpgrade card in player.cards)
-            {
-                CardManager.OnCardRemovedFromPlayer(player, card);
-            }
-
-            player.RemoveCards();
+            RPCA_RemoveCards();
 
             foreach (int cardID in cardIDs)
             {

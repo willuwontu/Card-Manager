@@ -11,8 +11,8 @@ namespace R3DCore.CM.Patches
     class PL_Damagable_Patch
     {
         [HarmonyPostfix]
-        [HarmonyPatch("Revive")]
-        static void Revive(Player ___player)
+        [HarmonyPatch("RPCA_Die")]
+        static void PostRPCA_Die(Player ___player)
         {
             NotificationHandler.instance.PlayNotification($"{___player.refs.view.Owner.NickName} died.", 5f);
         }

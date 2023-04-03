@@ -24,11 +24,13 @@ namespace R3DCore
 
             var harmony = new Harmony(ModId);
             harmony.PatchAll();
-
         }
 
         void Start()
         {
+            var playergo = UnityEngine.Resources.Load<GameObject>("Player");
+            playergo.AddComponent<PL_CardHandler>();
+
             var godgo = new GameObject("GodMode", typeof(CardUpgrade), typeof(Card_Stats));
             GodMode = godgo.GetComponent<CardUpgrade>();
 
