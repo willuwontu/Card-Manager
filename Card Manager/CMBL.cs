@@ -28,8 +28,12 @@ namespace R3DCore
 
         void Start()
         {
-            var playergo = UnityEngine.Resources.Load<GameObject>("Player");
-            playergo.AddComponent<PL_CardHandler>();
+            //this.ExecuteAfterFrames(5, () =>
+            //{
+            //    UnityEngine.Resources.LoadAll("");
+            //    var playergo = UnityEngine.Resources.Load<GameObject>("Player");
+            //    playergo.AddComponent<PL_CardHandler>();
+            //});
 
             var godgo = new GameObject("GodMode", typeof(CardUpgrade), typeof(Card_Stats));
             GodMode = godgo.GetComponent<CardUpgrade>();

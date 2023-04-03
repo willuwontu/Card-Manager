@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace R3DCore
 {
-    public class PL_CardHandler : MonoBehaviour
+    public class PL_CardHandler : MonoBehaviourPunCallbacks
     {
         public Player player;
         public PL_Damagable pl_damagable;
@@ -20,6 +20,37 @@ namespace R3DCore
         {
             this.player = GetComponent<Player>();
             this.pl_damagable = GetComponent<PL_Damagable>();
+        }
+
+        public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
+        {
+            this.player.refs.view.RPC(nameof(PL_CardHandler.RPCA_SyncCards), RpcTarget.All, new object[]
+                {
+                    newPlayer.ActorNumber,
+                    this.player.cards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray()
+                });
+        }
+
+        [PunRPC]
+        public void RPCA_SyncCards(int actorNumber, int[] cardIDs)
+        {
+            if (PhotonNetwork.LocalPlayer.ActorNumber == actorNumber)
+            {
+                RPCA_SetCards(cardIDs);
+            }
+        }
+
+        [PunRPC]
+        public void RPCA_RequestSync(int requestingActorNumber)
+        {
+            if (this.player.refs.view.IsMine)
+            {
+                this.player.refs.view.RPC(nameof(PL_CardHandler.RPCA_SyncCards), RpcTarget.All, new object[]
+                { 
+                    requestingActorNumber, 
+                    this.player.cards.Select(c => CardHandler.instance.GetIDOfCard(c)).ToArray() 
+                });
+            }
         }
 
         [PunRPC]
