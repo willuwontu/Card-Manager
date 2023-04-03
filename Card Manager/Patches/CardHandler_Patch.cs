@@ -29,7 +29,7 @@ namespace R3DCore.CM.Patches
             {
                 if (!CardManager.Cards.Select(ci => ci.card).Contains(card))
                 {
-                    CardManager.RegisterCard(GetVanillaCardName(card), card, "Vanilla", cards.Where(c => c == card).Count(), false);
+                    CardManager.RegisterCard(GetVanillaCardName(card), card, "Vanilla", cards.Where(c => c == card).Count());
                 }
             }
 

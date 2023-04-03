@@ -60,7 +60,7 @@ namespace R3DCore
 
             if (cards.Length > 0)
             {
-                CardInfo[] cardInfos = cards.Select(c => { var ci = GetCardInfoFromCard(c); UnityEngine.Debug.Log(ci.cardName + ": " + ci.weight) ; return ci; }).ToArray();
+                CardInfo[] cardInfos = cards.Select(c => { var ci = GetCardInfoFromCard(c); /*UnityEngine.Debug.Log(ci.cardName + ": " + ci.weight);*/ return ci; }).ToArray();
 
                 int sum = cardInfos.Sum(c => c.weight);
 

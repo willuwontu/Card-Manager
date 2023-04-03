@@ -64,7 +64,7 @@ namespace R3DCore
             stats.stats.Spread.baseValue = 5f;
             stats.stats.Spread.multiplier = 5f;
 
-            CardManager.RegisterCard("God", GodMode, "Card Manager", 1, true, true);
+            CardManager.RegisterCard("God", GodMode, "Card Manager", 1, hidden: true);
         }
     }
 }
