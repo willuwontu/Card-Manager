@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace R3DCore
 {
-    public class PL_CardHandler : MonoBehaviourPunCallbacks
+    internal class PL_CardHandler : MonoBehaviourPunCallbacks
     {
         public Player player;
         public PL_Damagable pl_damagable;

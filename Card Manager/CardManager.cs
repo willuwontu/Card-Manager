@@ -26,6 +26,8 @@ namespace R3DCore
                 throw new ArgumentException("Cards may only be registered once.");
             }
 
+            weight = weight > 0 ? weight : 1;
+
             CardInfo cardInfo = new CardInfo(card, cardName, modName, weight, canBeReassigned, hidden, allowMultiple);
 
             _cards.Add(cardInfo);
