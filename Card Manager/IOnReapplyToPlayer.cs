@@ -1,4 +1,4 @@
-﻿internal interface IOnReapplyToPlayer
+﻿public interface IOnReapplyToPlayer
 {
     void OnReapplyToPlayer(Player player);
 }

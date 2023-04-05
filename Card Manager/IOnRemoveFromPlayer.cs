@@ -1,4 +1,4 @@
-﻿internal interface IOnRemoveFromPlayer
+﻿public interface IOnRemoveFromPlayer
 {
     void OnRemoveFromPlayer(Player player);
 }

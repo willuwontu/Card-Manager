@@ -83,7 +83,7 @@ namespace R3DCore
                 }
                 else
                 {
-                    CardManager.OnReapplyCardToPlayer(player, CardHandler.instance.GetCardWithID(cardID));
+                    CardManager.OnCardReappliedToPlayer(player, CardHandler.instance.GetCardWithID(cardID));
                 }
             }
         }

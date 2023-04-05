@@ -481,7 +481,7 @@ namespace R3DCore
             }
         }
 
-        public static void OnReapplyCardToPlayer(Player player, CardUpgrade card)
+        public static void OnCardReappliedToPlayer(Player player, CardUpgrade card)
         {
             IOnReapplyToPlayer[] components = card.GetComponents<IOnReapplyToPlayer>();
             for (int i = 0; i < components.Length;i++)
@@ -496,70 +496,6 @@ namespace R3DCore
             Oldest,
             Newest,
             Random
-        }
-
-        public class CardInfo
-        {
-            public readonly CardUpgrade card;
-            public readonly string cardName;
-            public readonly string modName;
-            public readonly bool allowMultiple = true;
-            public readonly bool hidden;
-            public bool enabled = true;
-            public int weight;
-            public bool canBeReassigned;
-            public CardCategory[] categories = new CardCategory[0];
-            public CardCategory[] blacklistedCategories = new CardCategory[0];
-
-            public CardInfo(CardUpgrade card, string cardName, string modName, int weight, bool canBeReassigned, bool hidden, bool allowMultiple)
-            {
-                this.card = card;
-                this.cardName = cardName;
-                this.modName = modName;
-                this.weight = weight;
-                this.hidden = hidden;
-                this.allowMultiple = allowMultiple;
-                this.canBeReassigned = canBeReassigned;
-            }
-        }
-
-        public struct CardCategory
-        {
-            public readonly string name;
-
-            public CardCategory(string name)
-            {
-                this.name = name;
-            }
-
-            private bool Equals(CardCategory cardCategory)
-            {
-                return cardCategory.name == this.name;
-            }
-
-            public override bool Equals(object obj)
-            {
-                if (obj == null)
-                {
-                    return false;
-                }
-                if (obj is CardCategory cardCategory) 
-                {
-                    return this.Equals(cardCategory);
-                }
-
-                return false;
-            }
-
-            public override int GetHashCode()
-            {
-                return name.GetHashCode();
-            }
-
-            public override string ToString()
-            {
-                return $"CardCategory: {this.name}";
-            }
         }
     }
 }
