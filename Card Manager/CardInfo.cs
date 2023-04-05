@@ -12,6 +12,7 @@
         public readonly bool canBeReassigned = true;
         public CardCategory[] categories = new CardCategory[0];
         public CardCategory[] blacklistedCategories = new CardCategory[0];
+        public string description;
 
         public CardInfo(CardUpgrade card, string cardName, string modName, int weight, bool canBeReassigned, bool hidden, bool allowMultiple)
         {
@@ -22,6 +23,11 @@
             this.hidden = hidden;
             this.allowMultiple = allowMultiple;
             this.canBeReassigned = canBeReassigned;
+        }
+
+        public override string ToString()
+        {
+            return $"[{modName}] {cardName}";
         }
     }
 }
